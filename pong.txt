@@ -1,0 +1,879 @@
+;-------------------------------------------------------------------------------
+;-------------------------------------8086--------------------------------------
+;-----------------------Juego de la pelota y la raqueta-------------------------
+;-------------------------------------------------------------------------------
+
+DATOS	SEGMENT
+
+TEXT1	DB "<<JUEGO DE LA PELOTA Y LA RAQUETA>>",13,10,'$'	;Here i declared all the text I'm going to show to the player
+TEXT2	DB "Laura © Copyright 2011",13,10,'$'
+TEXT3	DB "INTRODUZCA SU NOMBRE",13,10,'$'
+TEXT4	DB "SCORE:",13,10,'$'
+TEXT5	DB "GAME OVER",13,10,'$'
+TEXT6   DB "___________",13,10,'$'
+TEXT7   DB "Game developed by Mirca Studios",13,10,'$'
+TEXT8   DB "11/08/11",13,10,'$'
+TEXT9   DB "11/08/11",13,10,'$'
+TEXT10   DB "WINNER!!!!",13,10,'$'
+TEXT11   DB "SCORE: 99",13,10,'$'
+score    DB 0, '$'		;Here i declared all variables i'm gonna use
+JUGADOR DB 80 dup (0)
+letter DB 2 dup (0)
+topY    DB 0
+botY    db 0
+ltopY    DB 0
+lbotY    db 0
+topballY    DB 0
+ltopballY    db 0
+lbotballY    db 0
+pltopballY    db 0
+plbotballY    db 0
+cnt0    dw 0
+cnt1    dw 0
+dladd db 0
+dlsub db 6
+botballY    DB 0	;0= down,1=up
+count	db 0		;0= left,1=right
+pcount	db 0
+suma    DB 0
+boolean db 0
+
+DATOS	ENDS
+
+
+
+PILA	SEGMENT
+	DB 127 DUP ('p')
+PUNTERO	DB 'P'
+PILA	ENDS
+
+
+
+CODIGO	SEGMENT
+	ASSUME CS:CODIGO, DS:DATOS, SS:PILA
+
+COMIENZO:
+	LEA DI,[JUGADOR]	;puts the array offset into di so I can use di to acess the array
+	MOV AX, DATOS		
+	MOV DS, AX	;it puts the datos data into data segment
+	MOV AX, PILA	;puts pila into the stack segment
+	MOV SS, AX
+	MOV AH, 09h	;prints text3
+	MOV DX, OFFSET TEXT3
+	INT 21h
+BUCLE:	MOV AH, 07h	;Entry of characters
+	INT 21h
+	MOV AH,00H	
+	CMP AX,0013D	;Here i check if the enter key is pushed
+	JE CONTINUA
+
+	mov [di],al		;Puts the letter in the array
+
+	mov [letter],al		;I put it in letter
+	INC di			;I inc di for the next position
+	mov [letter+1],'$'	;close the string with '$'
+        MOV AH, 09h		;prints letter
+	MOV DX, OFFSET letter
+	INT 21h
+
+	JMP BUCLE
+CONTINUA:
+	mov [di],10	;it puts carriage return,and line feed
+	inc di
+	mov [di],13	;10 and 13 thats carrage return and linefeed
+	inc di
+	mov [di],'$'	;closes the string with $
+
+;-------------------------------------------------------------------------------
+;--------------------------------BACKGROUND-------------------------------------
+;-------------------------------------------------------------------------------
+	MOV AH, 06
+	MOV AL,0
+	MOV BH, 14
+	MOV CH,0
+	MOV CL,0
+	MOV DL,100
+	MOV DH,100
+	INT 10h
+
+	MOV AH, 06		;YELLOW BORDERS OF SQUARE
+	MOV AL,0
+	MOV BH, 224
+	MOV CH,3
+	MOV CL,10
+	MOV DL,70
+	MOV DH,20
+	INT 10h
+	
+
+	MOV AH, 06		;BLACK INSIDE SQUARE
+	MOV AL,0
+	MOV BH, 14
+	MOV CH,4
+	MOV CL,12
+	MOV DL,68
+	MOV DH,19
+	INT 10h	
+
+
+
+;-------------------------------------------------------------------------------
+;----------------------------------DRAW THE PADDLE------------------------------
+;-------------------------------------------------------------------------------
+
+	MOV AH, 06		;paddle
+	MOV AL,0
+	MOV BH, 229
+	MOV CH,5
+	MOV CL,15
+	MOV DL,15
+	MOV DH,7
+	INT 10h
+
+
+
+;-------------------------------------------------------------------------------
+;---------------------------------DRAW THE BALL---------------------------------
+;-------------------------------------------------------------------------------
+	MOV AH, 06		;ball
+	MOV AL,0
+	MOV BH, 229
+	MOV CH,5
+	MOV CL,65
+	MOV DL,65
+	MOV DH,5
+	INT 10h
+
+
+	
+;-------------------------------------------------------------------------------
+;-----------------------------WRITING IN THE MAIN SCREEN------------------------
+;-------------------------------------------------------------------------------
+	mov ah,15
+        int 10h
+	MOV AH, 02		;WRITE TEXT1 IN THE MIDDLE OF THE WINDOW
+	MOV CH,0
+	MOV CL,0
+	MOV DL,20
+	MOV DH,0
+	INT 10h
+
+
+
+	MOV AH, 09h
+	MOV DX, OFFSET TEXT1
+	INT 21h
+
+
+	
+	mov ah,15
+        int 10h
+	MOV AH, 02		;WRITE TEXT2 IN THE MIDDLE OF THE WINDOW
+	MOV CH,0
+	MOV CL,0
+	MOV DL,27
+	MOV DH,3
+	INT 10h
+	MOV AH, 09h
+	MOV DX, OFFSET TEXT2
+	INT 21h
+
+
+
+
+	
+	mov ah,15		;WRITE THE NAME
+        int 10h 
+	MOV AH, 02
+	MOV CH,0
+	MOV CL,0
+	MOV DL,60
+	MOV DH,3
+	INT 10h
+	MOV AH, 09h
+	MOV DX, OFFSET TEXT4
+	INT 21h
+
+
+
+
+
+	mov ah,15		;WRITE THE NAME
+        int 10h 
+	MOV AH, 02
+	MOV CH,0
+	MOV CL,0
+	MOV DL,10
+	MOV DH,3
+	INT 10h
+
+
+        
+        MOV AH, 09h		;SHOW WHAT IS IN JUGADOR
+	MOV DX, OFFSET JUGADOR 
+	INT 21h
+
+	mov ah, 2h ;cursor dissappear
+	mov dh,255
+	MOV DL,0
+	mov bh,0
+	int 10h	
+				;Initialize all variables
+
+	mov [dlsub],48		;The first number in the score
+	mov [dladd],70		;The position where i write the score
+	mov [score],48		;The last number in the score 
+	MOV [botballY],0	;The counter up-down
+	mov [count],0		;The counter left-right
+	mov [ltopY],5		;The first position of the top of the paddle
+	mov [lbotY],7		;the first position of the bottom of the paddle
+	MOV [ltopballY],5	;The first position in rows of the ball
+	MOV [lbotballY],65	;The first position in columns of the ball
+	
+	mov [cnt0],0
+        mov [cnt1],0
+MASTERLOOP:
+	; if last position equals current positions, dont erase,so it doesnt blink
+	mov ch,[ltopballY] ;check the previous position and the current,if the same,it doesn't erase
+        cmp ch,[pltopballY]	;if they last position is different
+
+        je   skipErase		
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+	call erase	;it calls erase
+
+skipErase:
+	
+	call drawb	;then it draws the ball
+        mov ch,[ltopballY]	;puts the current position, into the previous position 
+	MOV CL,[lbotballY]
+	mov [pltopballY],ch
+	MOV [plbotballY],cl
+
+	CALL DRAWPADDLE
+
+	call compare	;then it calls compare 
+
+	cmp [cnt0],12	; if cnt0 is less than 12 ,it skips the function that updates the ball position
+
+        jl  skipUpdate
+			;if its equal or greater than 12
+	CALL DRAWBALL	;it calls the update
+	mov [cnt0],0	;recents cnt0
+
+skipUpdate:
+        
+        
+        cmp [cnt1],10000 ;if cnt1 is less than 12000 it doesnt update cnt0  (Speed)******************
+
+	jl   skip1
+	mov [cnt1],0	;resets cnt1
+
+	add [cnt0],1	;if its equal or greater it increases cnt0
+
+skip1:
+	add [cnt1],1	
+	
+	JMP MASTERLOOP
+
+
+
+
+
+
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;--------------------------------------END--------------------------------------
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+
+FIN:		MOV AH, 4Ch
+		INT 21h	
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;--------------------------------PROC DRAWBALL----------------------------------
+;--------------This procedure move the positions of the ball(X,Y)---------------
+;-------------------------------------------------------------------------------
+DRAWBALL	PROC 
+	
+
+
+	cmp[lbotballY],16	;Compare the position of the ball in X, 16 is the lowest
+	jne conta		;If it isn't true jump to conta
+	call compare		
+	mov [count],1		;I put the left-right counter to 1, it means it goes right
+	add [score],1		;It touched the paddle so I increase score
+	add [lbotballY],1	;I also increase the left-right variable
+	jmp sig
+conta:
+	cmp [lbotballY],65	;It isn't in the left limit so I ask if it's in the right limit
+	jne conta1		;If it isn't i jump to conta1
+	mov [count],0		;I put the left-right counter to 0, it means it goes to left
+	sub [lbotballY],1	;I decrease the left-right variable because we're going to left
+	jmp sig	
+conta1: 
+	cmp [count],1		;It isn't in any left-right limit so I ask if the left-right counter is 1(ball goes right) 
+	je sale
+	sub [lbotballY],1	;It goes to the left because the counter is 0, so i decrease the left-right variable  
+	jmp sig
+sale:
+	add [lbotballY],1	;The left-right counter is 1 it means it's going to the right so i increase the left-right variable
+
+sig:
+	cmp[ltopballY],5	;Compare the position of the ball in Y, 5 is the toppest
+	jne conte		;If it isn't true jump to conte
+	mov [botbally],0	;I put the up-down counter to 0, it means it goes down
+	add [ltopballY],1	;I also increase the up-down variable
+	jmp sig1		
+conte:	
+	cmp [ltopballY],18	;It isn't in the up limit so I ask if it's in the down limit
+	jne conte1		;If it isn't i jump to conte1
+	mov [botballY],1	;I put the up-down counter to 1, it means it goes up
+	sub [ltopballY],1	;I decrease the up-down variable because we're going up
+	jmp sig1
+conte1:
+	cmp [botballY],1	;It isn't in any up-down limit so I ask if the up-down counter is 1(ball goes up) 
+	je sale1
+	add [ltopballY],1	;It goes to the down because the counter is 0, so i increase the up-down variable
+	jmp sig1
+sale1:
+	sub [ltopballY],1	;The up-down counter is 1 it means it's going up so i decrease the up-down variable
+
+
+sig1:
+	cmp score, 57		;I ask if the score is 9
+	jg otro			;it's bigger so I jump to otro
+
+	mov ah, 2h		;Change the position of the cursor for drawing the score
+	mov dh,3		;Line 3
+	MOV DL,dladd		;dladd is the position where i'll write the score
+	mov bh,0
+	int 10h	
+	
+	MOV AH,2h	;I print score
+	mov dl,score
+	INT 21h
+
+	mov ah, 2h ;cursor dissappear
+	mov dh,255
+	MOV DL,0
+	mov bh,0
+	int 10h	
+	
+	
+	
+	jmp bye	;leave
+otro:
+	
+	call convert	
+	
+		
+	mov ah, 2h ;cursor dissappear
+	mov dh,255
+	MOV DL,0
+	mov bh,0
+	int 10h	
+	
+
+bye:	ret
+
+	
+	ENDP
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;-------------------------------PROC DRAWPADDLE---------------------------------
+;----------------This procedure draws and controls the paddle-------------------
+;-------------------------------------------------------------------------------
+
+DRAWPADDLE	PROC 
+		
+
+       jmp check
+check1:
+	mov [topY],5	;Put the top position of the paddle
+	mov [botY],7
+	jmp check
+check2:
+	mov [topY],16	;Put the lowest position of the paddle.
+	mov [botY],18
+check:	
+
+	mov al,[topY]	;Put the top most position of the paddle in al
+	cmp al,5	;I compare al with the topposition
+	jl check1	;If it's less than 5 then i jump to check1, so this is the top limit
+	cmp al,16	;I compare al with the lowest position
+	jg check2	;If it's bigger then i jump to check2, so this is the low limit
+       
+	
+        mov       ah,01		;If it is between the top and the bottom then i check keyboard buffer
+        int       16h
+        jz      chexit		;If it's empty i leave
+
+        mov     ah,00		;Else i read the character 
+        int     16h
+	
+     
+	cmp ah,72	;I compare the character pressed with 72, it's up arrow, the key i chose for going up
+	je moveup
+	cmp ah,80	;I compare the character pressed with 80, it's down arrow, the key i chose for going down
+	
+	je move
+chexit:
+	jmp padexit	;Leave the procedure
+	
+move: 
+		
+	MOV AH,06	;I erase the paddle ,drawing it black
+	MOV AL, 0
+	MOV BH, 14
+	mov ch,[ltopY]
+	MOV CL,15
+	mov dh,[lbotY]
+	MOV DL,15
+	INT 10h
+	
+	cmp [topY],16	;I compare it with the lowest limit
+	je move1	
+	
+	add [topY],1	;If it isn't the low limit i move the position of the paddle down
+	add [botY],1
+	
+move1:	
+	mov dh,[botY]	;I put the new position in the rows
+	mov ch,[topY]
+	mov [ltopY],ch	;I put them also in others variables 
+        mov [lbotY],dh
+	MOV AH,06	;I print the paddle in the new position
+	MOV AL, 3
+	MOV BH, 229
+	MOV CL,15	;It's 15 because it's the same column,and the paddle doesn't move right-left
+	MOV DL,15
+	int 10h
+
+	
+	jmp padexit	;Leave
+	
+
+moveup: 
+	
+	MOV AH,06	;I erase the paddle drawing it black
+	MOV AL, 0
+	MOV BH, 14
+	mov ch,[ltopY]
+	MOV CL,15
+	mov dh,[lbotY]
+	MOV DL,15
+	INT 10h
+	
+	cmp [topY],5	;I compare it with the highest limit
+	je moveup1
+	
+	sub [topY],1	;If it isn't the high limit i move the position of the paddle up
+	sub [botY],1
+	
+moveup1:	
+	mov dh,[botY]	;I put the new position in the rows
+	mov ch,[topY]
+	mov [ltopY],ch	;I put them also in others variables
+        mov [lbotY],dh
+	MOV AH,06	;I print the paddle in the new position
+	MOV AL, 3
+	MOV BH, 229
+	MOV CL,15	;It's 15 because it's the same column,and the paddle doesn't move right-left
+	MOV DL,15
+	int 10h
+
+	
+
+
+padexit:
+	RET
+	ENDP
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;--------------------------------PROC ERASE-------------------------------------
+;----------------------This procedure erase the ball----------------------------
+;-------------------------------------------------------------------------------
+erase proc
+
+	MOV AH,06	;I erase the ball painting it black
+	MOV AL, 0
+	MOV BH, 14
+	mov ch,[pltopballY]	;[ltopballY]=Rows
+	MOV CL,[plbotballY]	;[lbotballY]=Columns
+	mov dh,[pltopballY]
+	MOV DL,[plbotballY]
+	INT 10h
+	ret
+
+	
+
+
+
+	ENDP
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;---------------------------------PROC DRAWB------------------------------------
+;------------------------This procedure draw the ball---------------------------
+;-------------------------------------------------------------------------------
+drawb	proc
+	
+
+	MOV AH,06	;I draw the ball
+	MOV AL, 1	
+	MOV BH, 229	;I coloured  the ball yellow
+	MOV CH,[ltopballY]	;[ltopballY]=rows
+	MOV DH,[ltopballY]
+	MOV CL,[lbotballY]	;[lbotballY]=columns
+	MOV DL,[lbotballY]
+	int 10h
+	
+
+	ret
+
+	ENDP
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;--------------------------------PROC CONVERT-----------------------------------
+;------------------This procedure convert ascii to decimal----------------------
+;-------------------------------------------------------------------------------
+convert proc
+
+	cmp dlsub,57	;If it is 57 it means it's 99
+	jl te	;If it isn't 57 gets outta here 
+	cmp score,57	;if it's 57 it means it's 09
+	jl te		
+	
+	call gameover1	;you got 99 points, so you're the winner
+
+te:	mov score, 49
+	mov ah, 2h	;Change the position of the cursor for drawing the score
+	mov dh,3	;Line 3
+	MOV DL,dladd	;dladd is the position where i'll write the score
+	mov bh,0
+	int 10h	
+
+	
+	
+	inc dlsub	;the first number, when the second is nine, i increase dlsub 
+	mov score,48	;I put zero in the last number
+	MOV AH,2h	;I print it
+	mov dl,score
+	INT 21h
+
+	dec dladd	;I decrease the position where i write the first number, dlsub
+	mov ah, 2h	;Change the position of the cursor ,for drawing the score
+	mov dh,3
+	MOV DL,dladd
+	mov bh,0
+	int 10h	
+	MOV AH,2h
+	mov dl,dlsub	;I print dlsub
+	INT 21h
+
+	mov dladd,70	;I change the position of the numbers again to keep on counting until it gets 9
+	
+	
+ret
+endp
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;---------------------------------PROC COMPARE----------------------------------
+;-------------This procedure tell me if the ball rebound or not-----------------
+;-------------------------------------------------------------------------------
+compare proc
+	
+	cmp [lbotballY],16	;Compare if the ball is close the paddle
+	je llama	
+	jmp vete1	;If it isn't close leave the proc
+	
+	
+llama:
+	mov al,[ltopballY]  ;Position of the ball in Y
+	cmp [ltopY],al	;Top of the paddle in Y
+	jle a
+	call gameover	;If the ball is over the top of the paddle it's game over
+a:	cmp [lbotY],al    ;Bot of the paddle in Y 
+	jl reboot	;If the position of the ball is under the bot of the paddle then it's game over
+	
+	jmp vete	;If it is between the top and the bot jump to vete
+
+reboot: 
+	
+	call gameover 
+	
+vete:
+	
+	mov [lbotballY],17	
+	dec [lbotballY]		;It makes the ball rebound
+	
+	
+vete1:	
+	
+	ret
+
+endp
+
+
+
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;-----------------------------PROC GAME OVER------------------------------------
+;-----------------This procedure is for the last screenshoot--------------------
+;-------------------------------------------------------------------------------
+gameover proc			
+
+	
+	MOV AH, 06		;I paint the screen black, like i did before
+	MOV AL,0
+	MOV BH, 14
+	MOV CH,0
+	MOV CL,0
+	MOV DL,100
+	MOV DH,100
+	INT 10h
+
+	MOV AH, 06		;YELLOW BORDERS OF SQUARE
+	MOV AL,0
+	MOV BH, 224
+	MOV CH,3
+	MOV CL,10
+	MOV DL,70
+	MOV DH,20
+	INT 10h
+	
+
+	MOV AH, 06		;BLACK INSIDE SQUARE
+	MOV AL,0
+	MOV BH, 14
+	MOV CH,4
+	MOV CL,12
+	MOV DL,68
+	MOV DH,19
+	INT 10h	
+
+
+	
+	mov ah, 2h ;change the position of the cursor 
+	mov dh,16
+	MOV DL,35
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text7
+	MOV DX, OFFSET TEXT7
+	INT 21h
+
+	
+	mov ah, 2h ;change the position of the cursor 
+	mov dh,17
+	MOV DL,58
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text8
+	MOV DX, OFFSET TEXT8
+	INT 21h
+
+	mov ah, 2h ;change the position of the cursor 
+	mov dh,10
+	MOV DL,35
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text5
+	MOV DX, OFFSET TEXT5
+	INT 21h
+
+	mov ah, 2h ;change the position of the cursor
+	mov dh,11
+	MOV DL,34
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text6
+	MOV DX, OFFSET TEXT6  
+	INT 21h
+
+	mov ah, 2h ;change the position of the cursor
+	mov dh,12
+	MOV DL,35
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;Here I write text4
+	MOV DX, OFFSET TEXT4
+	INT 21h
+
+	mov ah, 2h ;change the position of the cursor
+	mov dh,12
+	MOV DL,43
+	mov bh,0
+	int 10h	
+
+	MOV AH,2h	;I write the last number of the score
+	mov dl,score
+	INT 21h
+	
+	mov ah, 2h	;change the position of the cursor
+	mov dh,12
+	MOV DL,42
+	mov bh,0
+	int 10h	
+	MOV AH,2h	;I write the first number of the score
+	mov dl,dlsub
+	INT 21h
+	
+	jmp fini	;leave
+
+
+ret 
+endp
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;-----------------------------PROC GAME OVER1-----------------------------------
+;----------------------------This procedure is for winners----------------------
+;-------------------------------------------------------------------------------
+gameover1 proc			
+
+	
+	MOV AH, 06		;I paint the screen black, like i did before
+	MOV AL,0
+	MOV BH, 14
+	MOV CH,0
+	MOV CL,0
+	MOV DL,100
+	MOV DH,100
+	INT 10h
+
+	MOV AH, 06		;YELLOW BORDERS OF SQUARE
+	MOV AL,0
+	MOV BH, 224
+	MOV CH,3
+	MOV CL,10
+	MOV DL,70
+	MOV DH,20
+	INT 10h
+	
+
+	MOV AH, 06		;BLACK INSIDE SQUARE
+	MOV AL,0
+	MOV BH, 14
+	MOV CH,4
+	MOV CL,12
+	MOV DL,68
+	MOV DH,19
+	INT 10h	
+
+	mov ah, 2h ;change the position of the cursor 
+	mov dh,10
+	MOV DL,35
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text11
+	MOV DX, OFFSET TEXT11
+	INT 21h
+
+	mov ah, 2h ;change the position of the cursor
+	mov dh,11
+	MOV DL,34
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text6
+	MOV DX, OFFSET TEXT6  
+	INT 21h
+
+	
+	mov ah, 2h ;change the position of the cursor 
+	mov dh,15
+	MOV DL,36
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text10
+	MOV DX, OFFSET TEXT10
+	INT 21h
+
+
+	mov ah, 2h ;change the position of the cursor 
+	mov dh,16
+	MOV DL,30
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text10
+	MOV DX, OFFSET TEXT10
+	INT 21h
+
+
+	mov ah, 2h ;change the position of the cursor 
+	mov dh,14
+	MOV DL,40
+	mov bh,0
+	int 10h	
+
+	MOV AH, 09h	;I write text10
+	MOV DX, OFFSET TEXT10
+	INT 21h
+	ret
+	endp
+
+;-------------------------------------------------------------------------------
+;---------------------------------PROC FINI-------------------------------------
+;----------This is for leaving hidding the cursor and exit the program----------
+;-------------------------------------------------------------------------------
+fini proc 
+
+	mov ah, 2h ;cursor dissappear
+	mov dh,255
+	MOV DL,0
+	mov bh,0
+	int 10h	
+	MOV AH, 4Ch	;This is for ending
+	INT 21h	
+	ret 
+	endp
+
+
+
+CODIGO	ENDS
+END	COMIENZO
