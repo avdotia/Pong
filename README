@@ -1,0 +1,12 @@
+INSERTA TU NOMBRE >>> INSERT YOUR NAME
+
+Classic pong game.
+Cursors
+Up arrow - Down arrow
+
+You need TASM for running this application
+Open the console, shift to the directory where you saved it and type:
+
+tasm /zi pong.txt
+tlink /v pong.obj
+pong.exe
